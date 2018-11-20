@@ -111,6 +111,12 @@ public:
   VectorXd ZsigPred_diff;
   VectorXd XsigPred_diff;
 
+   ///* the current NIS for radar
+  double NIS_radar_;
+
+  ///* the current NIS for laser
+  double NIS_lidar_;
+
 
 
 

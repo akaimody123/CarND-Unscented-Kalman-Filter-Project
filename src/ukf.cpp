@@ -31,7 +31,7 @@ UKF::UKF() {
         0, 0, 0, 0, 1;
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 1.0; //original 30
+  std_a_ = 1.6; //original 30
 
   // Process noise standard deviation yaw acceleration in rad/s^2
   std_yawdd_ = 0.5; //original 30
@@ -219,32 +219,42 @@ void UKF::Prediction(double delta_t) {
   	{
   		xdiff<< v/yawd*(sin(yaw+yawd*delta_t)-sin(yaw)),v/yawd*(-cos(yaw+yawd*delta_t)+cos(yaw)),0,yawd*delta_t,0;
   		nu_diff<<0.5*delta_t*delta_t*cos(yaw)*nu_a,0.5*delta_t*delta_t*sin(yaw)*nu_a,delta_t*nu_a,0.5*delta_t*delta_t*nu_yawdd,delta_t*nu_yawdd;
-  		xsig_pred=x_+xdiff+nu_diff;
+  		//xsig_pred=x_sig(0,i,n_x_,1)+xdiff+nu_diff;//x_+xdiff+nu_diff;
 
   	}
   	else
   	{
   		xdiff<<v*cos(yaw)*delta_t,v*sin(yaw)*delta_t,0,yawd*delta_t,0;
   		nu_diff<<0.5*delta_t*delta_t*cos(yaw)*nu_a,0.5*delta_t*delta_t*sin(yaw)*nu_a,delta_t*nu_a,0.5*delta_t*delta_t*nu_yawdd,delta_t*nu_yawdd;
-  		xsig_pred=x_+xdiff+nu_diff;
+  		//xsig_pred=x_sig(0,i,n_x_,1)+xdiff+nu_diff;//x_+xdiff+nu_diff;
 
   	}
   	
-  	XsigPred.col(i)=xsig_pred;
-  }
+  	//XsigPred.col(i)=xsig_pred;
+        XsigPred(0,i)=px+xdiff(0)+nu_diff(0);
+	XsigPred(1,i)=py+xdiff(1)+nu_diff(1);
+	XsigPred(2,i)=v+xdiff(2)+nu_diff(2);
+	XsigPred(3,i)=yaw+xdiff(3)+nu_diff(3);
+	XsigPred(4,i)=yawd+xdiff(4)+nu_diff(4);
 
-  std::cout << "XsigPred"  << XsigPred << std::endl;
+  }
+ // std::cout << "XsigPred"  << XsigPred << std::endl;
 
 
   	//predict mean
     XsigPred_mean=VectorXd(n_x_);
     XsigPred_mean.fill(0.0);
+ 
 
   	for(int i=0;i<n_sig_;i++)
   	{
   		
   		XsigPred_mean+=weights_(i)*XsigPred.col(i);
   	} 
+
+
+ 
+
 
     //normalize angle
     while (XsigPred_mean(3)>M_PI)
@@ -260,6 +270,7 @@ void UKF::Prediction(double delta_t) {
 
   	//predict covariance
     XsigPred_cov=MatrixXd(n_x_,n_x_);
+
     XsigPred_cov.fill(0.0);
 
     XsigPred_diff=VectorXd(n_x_);
@@ -276,6 +287,7 @@ void UKF::Prediction(double delta_t) {
     		{XsigPred_diff(3)+=2*M_PI;}
   		
   		XsigPred_cov+=weights_(i)*XsigPred_diff*XsigPred_diff.transpose();
+                
   	} 
 
   	//assign predicted state and covarance matrix
@@ -283,8 +295,8 @@ void UKF::Prediction(double delta_t) {
 
   	P_=XsigPred_cov;
 
-    std::cout << "XsigPred_mean " << XsigPred_mean << std::endl;
-    std::cout << "XsigPred_cov " << XsigPred_cov << std::endl;
+   // std::cout << "XsigPred_mean " << XsigPred_mean << std::endl;
+   // std::cout << "XsigPred_cov " << XsigPred_cov << std::endl;
 
   
 
@@ -356,25 +368,32 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
   			T+=weights_(i)*(XsigPred.col(i)-x_)*(Zsig_pred.col(i)-Zsig_pred_mean).transpose();
   		}
 
-      std::cout << "T_lidar " << T << std::endl;
+    //  std::cout << "T_lidar " << T << std::endl;
 
   		//kalman gain
   		K=MatrixXd(n_x_,2);
   		K=T*Zsig_pred_cov.inverse();
 
-      std::cout << "K_lidar " <<K << std::endl;
+    //  std::cout << "K_lidar " <<K << std::endl;
 
   		//state update
   		z=VectorXd(2);
   		z=meas_package.raw_measurements_;
-  		x_=x_+K*(z-Zsig_pred_mean);
 
-      std::cout << "x_lidar " << x_ << std::endl;
+                ZsigPred_diff=z-Zsig_pred_mean;
+
+  		x_=x_+K*ZsigPred_diff;
+
+    //  std::cout << "x_lidar " << x_ << std::endl;
 
   		//covariance update
   		P_=P_-K*Zsig_pred_cov*K.transpose();
 
-      std::cout << "P_lidar " << P_ << std::endl;
+    //  std::cout << "P_lidar " << P_ << std::endl;
+
+                 //calculate NIS
+      NIS_lidar_ = ZsigPred_diff.transpose() * Zsig_pred_cov.inverse() * ZsigPred_diff;
+      std::cout << "NIS_lidar " << NIS_lidar_ << std::endl;
 }
 
 
@@ -443,8 +462,8 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
 
   		Zsig_pred_cov+=R_radar_;
 
-       std::cout << "Zsig_pred_mean_radar " << Zsig_pred_mean << std::endl;
-       std::cout << "Zsig_pred_cov_radar " << Zsig_pred_cov << std::endl;
+      // std::cout << "Zsig_pred_mean_radar " << Zsig_pred_mean << std::endl;
+      // std::cout << "Zsig_pred_cov_radar " << Zsig_pred_cov << std::endl;
 
 
   		//UKF update
@@ -470,14 +489,14 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   			T+=weights_(i)*XsigPred_diff*ZsigPred_diff.transpose();
   		}
 
-      std::cout << "T_radar " << T << std::endl;
+      //std::cout << "T_radar " << T << std::endl;
 
 
   		//kalman gain
   		K=MatrixXd(n_x_,3);
   		K=T*Zsig_pred_cov.inverse();
 
-      std::cout << "K_radar " << K << std::endl;
+      //std::cout << "K_radar " << K << std::endl;
 
 
   		//state update
@@ -495,9 +514,14 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   		//covariance update
   		P_=P_-K*Zsig_pred_cov*K.transpose();
 
-      std::cout << "x_radar " << x_ << std::endl;
-      std::cout << "P_radar " << P_ << std::endl;
+     // std::cout << "x_radar " << x_ << std::endl;
+     // std::cout << "P_radar " << P_ << std::endl;
 
+      //calculate NIS
+      NIS_radar_ = ZsigPred_diff.transpose() * Zsig_pred_cov.inverse() * ZsigPred_diff;
+      std::cout << "NIS_radar " << NIS_radar_ << std::endl;
+
+ 
 
 
   	}
