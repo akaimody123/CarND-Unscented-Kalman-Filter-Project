@@ -31,7 +31,7 @@ UKF::UKF() {
         0, 0, 0, 0, 1;
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 1.6; //original 30
+  std_a_ = 1.5; //original 30
 
   // Process noise standard deviation yaw acceleration in rad/s^2
   std_yawdd_ = 0.5; //original 30
@@ -231,7 +231,7 @@ void UKF::Prediction(double delta_t) {
   	}
   	
   	//XsigPred.col(i)=xsig_pred;
-        XsigPred(0,i)=px+xdiff(0)+nu_diff(0);
+  XsigPred(0,i)=px+xdiff(0)+nu_diff(0);
 	XsigPred(1,i)=py+xdiff(1)+nu_diff(1);
 	XsigPred(2,i)=v+xdiff(2)+nu_diff(2);
 	XsigPred(3,i)=yaw+xdiff(3)+nu_diff(3);
@@ -432,7 +432,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   	{
   		for(int i=0; i<n_sig_;i++)
   		{
-  			Zsig_pred.col(i)<<sqrt(XsigPred(0,i)*XsigPred(0,i)+XsigPred(1,i)*XsigPred(1,i)), atan2(XsigPred(1,i),XsigPred(0,i)),XsigPred(0,i)*XsigPred(2,i)*cos(XsigPred(3,i))+XsigPred(1,i)*XsigPred(2,i)*sin(XsigPred(3,i))/sqrt(XsigPred(0,i)*XsigPred(0,i)+XsigPred(1,i)*XsigPred(1,i));
+  			Zsig_pred.col(i)<<sqrt(XsigPred(0,i)*XsigPred(0,i)+XsigPred(1,i)*XsigPred(1,i)), atan2(XsigPred(1,i),XsigPred(0,i)),(XsigPred(0,i)*XsigPred(2,i)*cos(XsigPred(3,i))+XsigPred(1,i)*XsigPred(2,i)*sin(XsigPred(3,i)))/sqrt(XsigPred(0,i)*XsigPred(0,i)+XsigPred(1,i)*XsigPred(1,i));
 
   		}
 
